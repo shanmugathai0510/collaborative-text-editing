@@ -5,43 +5,51 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
 
 const server = http.createServer(app);
 const io = socketIo(server, {
-  cors: { origin: "http://localhost:3000" }
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
 });
 
-let currentContent = "Welcome to Collaborative Editor!\n\nStart typing...";
+let currentContent = "Welcome to Collaborative Editor!\n\nStart typing here...";
 let users = {};
 
 io.on('connection', (socket) => {
-  console.log("User connected:", socket.id);
+  console.log("✅ New user connected:", socket.id);
   
-  users[socket.id] = { 
-    id: socket.id, 
-    name: "User " + Object.keys(users).length 
+  users[socket.id] = {
+    id: socket.id,
+    name: "User " + Object.keys(users).length
   };
   
-  socket.emit("init", { 
-    content: currentContent, 
-    users: Object.values(users) 
+  socket.emit("init", {
+    content: currentContent,
+    users: Object.values(users)
   });
   
   socket.broadcast.emit("user-joined", users[socket.id]);
+  io.emit("users-list", Object.values(users));
   
-  socket.on("update", (data) => {
+  socket.on("text-change", (data) => {
     currentContent = data.content;
-    socket.broadcast.emit("update", { 
-      content: data.content, 
-      userId: socket.id 
+    socket.broadcast.emit("text-update", {
+      content: data.content,
+      userId: socket.id
     });
   });
   
   socket.on("disconnect", () => {
+    console.log("❌ User disconnected:", socket.id);
     delete users[socket.id];
     io.emit("user-left", socket.id);
+    io.emit("users-list", Object.values(users));
   });
 });
 
-server.listen(5000, () => console.log("Server running on http://localhost:5000"));
+const PORT = 5000;
+server.listen(PORT, () => {
+  console.log("🚀 Server running on http://localhost:" + PORT);
+});
