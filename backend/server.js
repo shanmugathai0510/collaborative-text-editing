@@ -9,7 +9,7 @@ app.use(cors());
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "https://collaborative-text-editing.vercel.app",
     methods: ["GET", "POST"]
   }
 });
@@ -21,31 +21,22 @@ let nextUserId = 1;
 io.on('connection', (socket) => {
   console.log("✅ New user connected:", socket.id);
   
-  // Wait for gender from frontend
-  let userGender = 'neutral';
+  const userNumber = nextUserId;
+  nextUserId++;
   
-  socket.on("set-gender", (gender) => {
-    userGender = gender;
-    
-    const userNumber = nextUserId;
-    nextUserId++;
-    
-    users[socket.id] = {
-      id: socket.id,
-      name: "User " + userNumber,
-      gender: userGender
-    };
-    
-    console.log("User added:", users[socket.id]);
-    
-    socket.emit("init", {
-      content: currentContent,
-      users: Object.values(users)
-    });
-    
-    socket.broadcast.emit("user-joined", users[socket.id]);
-    io.emit("users-list", Object.values(users));
+  users[socket.id] = {
+    id: socket.id,
+    name: "User " + userNumber,
+    gender: Math.random() < 0.5 ? 'male' : 'female'
+  };
+  
+  socket.emit("init", {
+    content: currentContent,
+    users: Object.values(users)
   });
+  
+  socket.broadcast.emit("user-joined", users[socket.id]);
+  io.emit("users-list", Object.values(users));
   
   socket.on("text-change", (data) => {
     currentContent = data.content;
@@ -63,7 +54,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log("🚀 Server running on http://localhost:" + PORT);
 });
